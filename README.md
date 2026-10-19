@@ -8,7 +8,8 @@ Liftosauring is a competitive strength-ranking and social fitness web applicatio
 
 ## Features
 
-- **AES-256-GCM Encrypted Key Vault:** Users connect their personal `lftsk_...` Liftosaur API key, which is validated against `GET /api/v1/measurements` and encrypted at rest in SQLite.
+- **Fluid UI:** Spring-physics interface in the spirit of OPPO's Fluid UI. Surfaces sense the pressure and direction of each touch (real pen/touch pressure where reported, hold-to-deepen otherwise), squish and tilt toward your finger, stretch elastically when dragged, rebound with a bouncy overshoot, and light up with a rim highlight that follows the pointer. Liquid tab indicators, an elastic slider, rubber-band lists, Fluid-Cloud-style toasts and a scrubbable floating dock round it out. Dark and light themes; honours `prefers-reduced-motion`.
+- **AES-256-GCM Encrypted Key Vault:** Users connect their personal `lftsk_...` Liftosaur API key, which is validated against `GET /api/v1/measurements` and encrypted at rest in SQLite with a per-install secret (`LIFTOSAURING_SECRET`, or a random key generated into `.liftosauring.key`).
 - **9 Prehistoric Classification Tiers (`I` – `IX`):** Standardized 0–1,000 allometric index (*Hatchling*, *Compy*, *Gallimimus*, *Velociraptor*, *Triceratops*, *Stegosaurus*, *Allosaurus*, *Tyrannosaurus*, and *Apex Extinction*), subdivided into `III → II → I` (100 LP per division).
 - **6-Axis Muscular & Cadence Radar:** Visualizes pound-for-pound balance across *Chest*, *Back*, *Legs*, *Shoulders*, *Arms*, and 14-day training *Cadence*.
 - **Ranked Exercise Index:** Parses Liftosaur's workout DSL (`/api/v1/history`) to compute Epley 1RMs, working tonnage, and exact 5RM/3RM load thresholds needed for the next division promotion.
@@ -34,11 +35,15 @@ LIFTOSAUR_API_KEY="lftsk_your_key_here" python3 server.py
 
 Open **[http://localhost:8080](http://localhost:8080)** in your browser.
 
+Optional environment variables: `PORT`, `HOST`, `LIFTOSAUR_CALLSIGN` (name for the env-key profile), `LIFTOSAURING_SECRET` (encryption secret; otherwise generated into `.liftosauring.key` — keep that file, or stored keys must be re-entered), and `LIFTOSAUR_API_BASE` (point at a mock Liftosaur API for testing).
+
 ---
 
 ## Project Structure
 
 - `engine.py` — Liftosaur REST API client, Liftoscript workout history parser, Epley 1RM & DOTS allometric scoring math, and AES-256-GCM key encryption.
-- `server.py` — Zero-boilerplate Python HTTP API server and SQLite persistence layer (`liftosauring.db`).
-- `static/index.html` — Sleek dark-matte telemetry interface with scroll-reveal animations.
-- `static/app.js` — Frontend state controller, custom SVG 6-axis radar renderer, and projection calculator.
+- `server.py` — Zero-boilerplate threaded Python HTTP API server and SQLite persistence layer (`liftosauring.db`). Static files are served strictly from `static/`.
+- `static/index.html` — Page structure and icon set.
+- `static/fluid.css` — Fluid UI design system: glass surfaces, pointer-tracked lighting, liquid controls, dark/light tokens.
+- `static/fluid.js` — Motion engine: damped springs, pressure/direction-aware press, liquid indicators, elastic slider, rubber-band scrolling, FLIP reordering, toasts.
+- `static/app.js` — State controller and renderers (all interpolated data is HTML-escaped), SVG radar, evolution track, projection calculator.
