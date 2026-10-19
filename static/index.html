@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Liftosauring — Strength Telemetry & Ranking</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Space Grotesk"', 'sans-serif'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            obsidian: '#090a0c',
+            surface: '#111317',
+            surfaceElevated: '#17191f',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      background-color: #090a0c;
+      background-image: radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.03) 0%, transparent 60%);
+      color: #f4f4f5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .panel {
+      background: #111317;
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      transition: border-color 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .panel:hover {
+      border-color: rgba(255, 255, 255, 0.13);
+    }
+    .panel-subtle {
+      background: rgba(23, 25, 31, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    /* Smooth Scroll Reveal Animations */
+    .reveal-on-scroll {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: opacity, transform;
+    }
+    .reveal-on-scroll.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .stagger-1 { transition-delay: 60ms; }
+    .stagger-2 { transition-delay: 120ms; }
+    .stagger-3 { transition-delay: 180ms; }
+
+    /* Custom subtle range input */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      background: #1e2028;
+      height: 5px;
+      border-radius: 999px;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #f4f4f5;
+      border: 2px solid #090a0c;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090a0c; }
+    ::-webkit-scrollbar-thumb { background: #27272a; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3f3f46; }
+  </style>
+</head>
+<body class="font-sans antialiased selection:bg-zinc-200 selection:text-zinc-950 pb-24">
+
+  <!-- TOP NAVIGATION BAR -->
+  <header class="sticky top-0 z-40 border-b border-white/[0.06] bg-[#090a0c]/85 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-6">
+      <!-- Brand Identity -->
+      <div class="flex items-center gap-3.5">
+        <div class="w-9 h-9 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center text-zinc-200">
+          <!-- Minimal geometric dinosaur skull/crest icon -->
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 17l4-4 3 3 6-6 3 3"/>
+            <path d="M14 7h6v6"/>
+          </svg>
+        </div>
+        <div class="flex items-baseline gap-2.5">
+          <span class="font-display font-semibold text-base tracking-tight text-zinc-100">
+            LIFTOSAURING
+          </span>
+          <span class="text-[11px] font-mono text-zinc-500 hidden sm:inline">
+            Read-Only Liftosaur Telemetry
+          </span>
+        </div>
+      </div>
+
+      <!-- Section Jump Links -->
+      <nav class="hidden md:flex items-center gap-6 text-xs font-medium text-zinc-400">
+        <a href="#sec-overview" class="hover:text-zinc-100 transition-colors">Overview</a>
+        <a href="#sec-arsenal" class="hover:text-zinc-100 transition-colors">Exercise Index</a>
+        <a href="#sec-projection" class="hover:text-zinc-100 transition-colors">Projection & Standards</a>
+        <a href="#sec-pack" class="hover:text-zinc-100 transition-colors">Pack Standings</a>
+        <a href="#sec-api" class="hover:text-zinc-100 transition-colors">API Key</a>
+      </nav>
+
+      <!-- Right Status & Sync -->
+      <div class="flex items-center gap-3">
+        <a href="#sec-api" class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900/90 border border-white/[0.07] hover:border-white/15 text-xs font-mono text-zinc-400 transition">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span id="header-masked-key">lftsk_hRh••••OVNg</span>
+        </a>
+
+        <button onclick="syncLiveKey()" id="btn-sync-now" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs transition active:scale-[0.98]">
+          <svg id="sync-icon" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 16h5v5"/>
+          </svg>
+          <span>Sync Liftosaur</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm"></div>
+
+  <!-- MAIN CONTINUOUS FLOW -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 space-y-12">
+
+    <!-- ==========================================
+         SECTION 1: EXECUTIVE RANK & RADAR OVERVIEW
+         ========================================== -->
+    <section id="sec-overview" class="space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Primary Rank Telemetry Card (7 Cols) -->
+        <div class="lg:col-span-7 panel rounded-2xl p-6 sm:p-8 flex flex-col justify-between reveal-on-scroll">
+          <div>
+            <div class="flex items-center justify-between gap-4 border-b border-white/[0.06] pb-6">
+              <div class="flex items-center gap-4">
+                <div id="hero-rank-emblem" class="w-14 h-14 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center font-display font-bold text-xl text-emerald-400 shrink-0">
+                  VI
+                </div>
+                <div>
+                  <div class="flex items-center gap-2.5 flex-wrap">
+                    <span class="text-xs font-mono uppercase tracking-wider text-zinc-400" id="hero-callsign">JONATHAN</span>
+                    <span class="text-zinc-700">•</span>
+                    <span class="text-xs font-mono text-zinc-400" id="hero-bw-pill">197 lb</span>
+                    <span class="text-zinc-700">•</span>
+                    <span class="text-xs font-mono text-zinc-400" id="hero-program-pill">5/3/1 BBB</span>
+                  </div>
+                  <h1 id="hero-rank-title" class="font-display font-bold text-2xl sm:text-3xl tracking-tight text-zinc-100 mt-1">
+                    Stegosaurus III
+                  </h1>
+                  <p id="hero-rank-desc" class="text-xs text-zinc-400 mt-0.5">
+                    High-tier performance. Top quartile strength across primary lifts.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Key Index Readout -->
+              <div class="text-right shrink-0">
+                <div class="text-[11px] font-mono uppercase tracking-wider text-zinc-500">Allometric Index</div>
+                <div class="font-display font-bold text-2xl sm:text-3xl text-zinc-100 mt-0.5">
+                  <span id="hero-overall-score">637.4</span>
+                  <span class="text-xs font-mono font-normal text-zinc-500">/ 1000</span>
+                </div>
+                <div class="text-xs font-mono text-zinc-400 mt-1">
+                  <span id="hero-dots-score">262.1</span> DOTS <span class="text-zinc-600">·</span> <span id="hero-sbd-total">890.5</span> lb SBD
+                </div>
+              </div>
+            </div>
+
+            <!-- Division Progression Bar -->
+            <div class="py-6 space-y-2.5">
+              <div class="flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-medium text-zinc-200"><span id="hero-lp-val">93</span> / 100 LP</span>
+                  <span class="text-zinc-500">Division Progress</span>
+                </div>
+                <div class="font-mono text-zinc-400">
+                  <span id="hero-pts-needed" class="text-zinc-200 font-medium">2.6</span> pts to <span id="hero-next-rank" class="text-emerald-400">Stegosaurus II</span>
+                </div>
+              </div>
+              <div class="w-full h-2 bg-zinc-900 rounded-full overflow-hidden">
+                <div id="hero-lp-bar" class="h-full rounded-full bg-emerald-400 transition-all duration-700" style="width: 93%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Primary Compound Benchmarks -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-white/[0.06]">
+            <div class="panel-subtle rounded-xl p-3.5">
+              <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                <span>Squat</span>
+                <span id="b4-squat-tier" class="text-emerald-400">Stego III</span>
+              </div>
+              <div class="font-display font-semibold text-xl text-zinc-100 mt-1"><span id="b4-squat">341</span> <span class="text-xs font-normal text-zinc-500">lb</span></div>
+              <div class="text-[11px] text-zinc-500 font-mono mt-0.5" id="b4-squat-set">310lb × 3</div>
+            </div>
+
+            <div class="panel-subtle rounded-xl p-3.5">
+              <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                <span>Bench Press</span>
+                <span id="b4-bench-tier" class="text-emerald-400">Stego II</span>
+              </div>
+              <div class="font-display font-semibold text-xl text-zinc-100 mt-1"><span id="b4-bench">270</span> <span class="text-xs font-normal text-zinc-500">lb</span></div>
+              <div class="text-[11px] text-zinc-500 font-mono mt-0.5" id="b4-bench-set">245lb × 3</div>
+            </div>
+
+            <div class="panel-subtle rounded-xl p-3.5">
+              <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                <span>Deadlift</span>
+                <span id="b4-dead-tier" class="text-zinc-300">Raptor II</span>
+              </div>
+              <div class="font-display font-semibold text-xl text-zinc-100 mt-1"><span id="b4-dead">280</span> <span class="text-xs font-normal text-zinc-500">lb</span></div>
+              <div class="text-[11px] text-zinc-500 font-mono mt-0.5" id="b4-dead-set">240lb × 5</div>
+            </div>
+
+            <div class="panel-subtle rounded-xl p-3.5">
+              <div class="flex items-center justify-between text-[11px] font-mono text-zinc-400">
+                <span>Overhead Press</span>
+                <span id="b4-ohp-tier" class="text-emerald-400">Stego II</span>
+              </div>
+              <div class="font-display font-semibold text-xl text-zinc-100 mt-1"><span id="b4-ohp">175</span> <span class="text-xs font-normal text-zinc-500">lb</span></div>
+              <div class="text-[11px] text-zinc-500 font-mono mt-0.5" id="b4-ohp-set">150lb × 5</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6-Axis Radar & Biometric Telemetry (5 Cols) -->
+        <div class="lg:col-span-5 panel rounded-2xl p-6 sm:p-8 flex flex-col justify-between reveal-on-scroll stagger-1">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="font-display font-semibold text-base text-zinc-100">
+                Muscular & Cadence Distribution
+              </h2>
+              <p class="text-xs text-zinc-400 mt-0.5">Allometric score balance across 6 performance axes</p>
+            </div>
+            <span class="text-[11px] font-mono px-2.5 py-1 rounded-md bg-zinc-900 border border-white/[0.07] text-zinc-300">
+              6-Axis Profile
+            </span>
+          </div>
+
+          <div class="flex items-center justify-center my-2">
+            <svg id="muscle-radar-svg" viewBox="0 0 300 245" class="w-full max-w-[300px] h-[215px] overflow-visible"></svg>
+          </div>
+
+          <!-- Biometrics Strip from /api/v1/measurements -->
+          <div class="grid grid-cols-4 gap-2.5 pt-4 border-t border-white/[0.06]">
+            <div class="panel-subtle rounded-lg p-2.5">
+              <div class="text-[10px] font-mono text-zinc-500 uppercase">Bodyweight</div>
+              <div class="font-mono font-medium text-xs text-zinc-200 mt-0.5" id="bio-weight">197 lb</div>
+            </div>
+            <div class="panel-subtle rounded-lg p-2.5">
+              <div class="text-[10px] font-mono text-zinc-500 uppercase">Bodyfat</div>
+              <div class="font-mono font-medium text-xs text-zinc-200 mt-0.5" id="bio-bf">20%</div>
+            </div>
+            <div class="panel-subtle rounded-lg p-2.5">
+              <div class="text-[10px] font-mono text-zinc-500 uppercase">7d Volume</div>
+              <div class="font-mono font-medium text-xs text-zinc-200 mt-0.5" id="bio-vol">27.2k lb</div>
+            </div>
+            <div class="panel-subtle rounded-lg p-2.5">
+              <div class="text-[10px] font-mono text-zinc-500 uppercase">14d Cadence</div>
+              <div class="font-mono font-medium text-xs text-zinc-200 mt-0.5" id="bio-streak">9 Sessions</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 9 Prehistoric Classification Tiers -->
+      <div class="panel rounded-2xl p-6 reveal-on-scroll stagger-2">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+          <h3 class="font-display font-medium text-xs uppercase tracking-wider text-zinc-400">
+            Prehistoric Classification Scale (0 – 1,000 Allometric Index)
+          </h3>
+          <span class="text-xs text-zinc-500 font-mono">Sub-divisions III → II → I per tier</span>
+        </div>
+        <div id="tier-ladder-strip" class="grid grid-cols-3 sm:grid-cols-9 gap-2"></div>
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SECTION 2: EXERCISE INDEX & NEXT PRESCRIBED SESSION
+         ========================================== -->
+    <section id="sec-arsenal" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left 7 Cols: Ranked Exercise Index -->
+      <div class="lg:col-span-7 panel rounded-2xl p-6 sm:p-8 space-y-5 reveal-on-scroll">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.06] pb-4">
+          <div>
+            <h2 class="font-display font-semibold text-lg text-zinc-100">
+              Ranked Exercise Index (<span id="arsenal-count">23</span>)
+            </h2>
+            <p class="text-xs text-zinc-400 mt-0.5">Historical e1RM benchmarks and next-division weight thresholds</p>
+          </div>
+          <select id="muscle-filter" onchange="renderExerciseArsenal()" class="bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs font-medium text-zinc-200 focus:outline-none focus:border-zinc-500">
+            <option value="ALL">All Muscle Groups</option>
+            <option value="Legs">Legs</option>
+            <option value="Chest">Chest</option>
+            <option value="Back">Back</option>
+            <option value="Shoulders">Shoulders</option>
+            <option value="Arms">Arms</option>
+          </select>
+        </div>
+
+        <div id="exercise-arsenal-list" class="space-y-2 max-h-[560px] overflow-y-auto pr-1"></div>
+      </div>
+
+      <!-- Right 5 Cols: Next Scheduled Session (Read-Only from Liftosaur) + Synced History -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- Next Scheduled Liftosaur Session -->
+        <div class="panel rounded-2xl p-6 sm:p-8 reveal-on-scroll stagger-1">
+          <div class="flex items-start justify-between gap-4 border-b border-white/[0.06] pb-4">
+            <div>
+              <span class="text-[10px] font-mono uppercase tracking-widest text-emerald-400">
+                Scheduled in Liftosaur (/workout/next)
+              </span>
+              <h3 id="next-workout-title" class="font-display font-semibold text-lg text-zinc-100 mt-1">
+                Week 2 - Day 3
+              </h3>
+              <p id="next-workout-prog" class="text-xs text-zinc-400 mt-0.5">5/3/1 BBB - Squat/Bench/Deadlift/OHP</p>
+            </div>
+            <span class="text-[11px] font-mono px-2.5 py-1 rounded bg-zinc-900 border border-white/[0.07] text-zinc-400 shrink-0">
+              Read-Only
+            </span>
+          </div>
+
+          <div id="next-workout-entries" class="space-y-3 mt-4"></div>
+        </div>
+
+        <!-- Synced Workout History Log -->
+        <div class="panel rounded-2xl p-6 sm:p-8 reveal-on-scroll stagger-2">
+          <div class="flex items-center justify-between border-b border-white/[0.06] pb-4 mb-4">
+            <div>
+              <h3 class="font-display font-semibold text-base text-zinc-100">
+                Synced Workout Log
+              </h3>
+              <p class="text-xs text-zinc-400 mt-0.5">Parsed directly from <code class="font-mono text-zinc-300">/api/v1/history</code></p>
+            </div>
+            <span class="text-xs font-mono text-zinc-500">Latest 12</span>
+          </div>
+          <div id="recent-workouts-list" class="space-y-2 max-h-[320px] overflow-y-auto pr-1"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SECTION 3: PROJECTION CALCULATOR & SOLO BENCHMARKS
+         ========================================== -->
+    <section id="sec-projection" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left 6 Cols: Read-Only 1RM & Division Projection Calculator -->
+      <div class="lg:col-span-6 panel rounded-2xl p-6 sm:p-8 space-y-6 reveal-on-scroll">
+        <div class="border-b border-white/[0.06] pb-4">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+            Theoretical Performance Model
+          </span>
+          <h2 class="font-display font-semibold text-lg text-zinc-100 mt-1">
+            Rank & e1RM Projection Calculator
+          </h2>
+          <p class="text-xs text-zinc-400 mt-0.5">
+            Preview how hypothetical weight and rep combinations translate to Epley 1RM and Prehistoric Division placement.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-2">Exercise</label>
+            <select id="calc-exercise" onchange="runRankCalculator()" class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-zinc-100 font-medium focus:outline-none focus:border-zinc-500">
+              <option value="Deadlift">Deadlift</option>
+              <option value="Squat">Squat</option>
+              <option value="Bench Press">Bench Press</option>
+              <option value="Overhead Press">Overhead Press</option>
+              <option value="Bench Press Close Grip">Bench Press Close Grip</option>
+              <option value="Bent Over Row">Bent Over Row</option>
+              <option value="Pendlay Row">Pendlay Row</option>
+              <option value="Bicep Curl, Barbell">Bicep Curl, Barbell</option>
+              <option value="Romanian Deadlift, Barbell">Romanian Deadlift</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-2">Bodyweight (lb)</label>
+            <input type="number" id="calc-bw" value="197" oninput="runRankCalculator()" class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2.5 text-xs text-zinc-100 font-mono focus:outline-none focus:border-zinc-500" />
+          </div>
+
+          <div>
+            <div class="flex justify-between text-[11px] font-mono mb-2">
+              <span class="text-zinc-400 uppercase">Load</span>
+              <span id="calc-weight-label" class="text-zinc-100 font-semibold">250 lb</span>
+            </div>
+            <input type="range" id="calc-weight" min="45" max="550" step="5" value="250" oninput="document.getElementById('calc-weight-label').textContent = this.value + ' lb'; runRankCalculator()" class="w-full" />
+            <div class="flex justify-between text-[10px] font-mono text-zinc-600 mt-1.5">
+              <span>45</span><span>225</span><span>315</span><span>405</span><span>550</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-[11px] font-mono mb-2">
+              <span class="text-zinc-400 uppercase">Repetitions</span>
+              <span id="calc-reps-label" class="text-zinc-100 font-semibold">8 reps</span>
+            </div>
+            <input type="range" id="calc-reps" min="1" max="15" step="1" value="8" oninput="document.getElementById('calc-reps-label').textContent = this.value + ' reps'; runRankCalculator()" class="w-full" />
+            <div class="flex justify-between text-[10px] font-mono text-zinc-600 mt-1.5">
+              <span>1</span><span>5</span><span>8</span><span>12</span><span>15</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Read-Only Projection Output -->
+        <div class="panel-subtle rounded-xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-4">
+            <div id="calc-res-icon" class="w-12 h-12 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center font-display font-bold text-base text-zinc-200 shrink-0">
+              V
+            </div>
+            <div>
+              <div class="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Projected Classification</div>
+              <div id="calc-res-title" class="font-display font-semibold text-xl text-zinc-100 mt-0.5">Triceratops III</div>
+              <div id="calc-res-comparison" class="text-xs text-zinc-400 font-mono mt-0.5">+36.7 lb vs. current historical PR</div>
+            </div>
+          </div>
+          <div class="sm:text-right border-t sm:border-t-0 border-white/[0.06] pt-3 sm:pt-0">
+            <div class="text-[10px] font-mono uppercase text-zinc-500">Estimated 1RM</div>
+            <div id="calc-res-e1rm" class="font-display font-bold text-2xl text-zinc-100">316.7 <span class="text-xs font-normal text-zinc-500">lb</span></div>
+            <div class="text-xs font-mono text-zinc-400">Index: <span id="calc-res-score" class="text-zinc-200">492.0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right 6 Cols: Solo Standards & Allosaurus Target Milestones -->
+      <div class="lg:col-span-6 space-y-6">
+        
+        <!-- Solo Progression Benchmarks -->
+        <div class="panel rounded-2xl p-6 sm:p-8 space-y-4 reveal-on-scroll stagger-1">
+          <div class="flex items-center justify-between border-b border-white/[0.06] pb-4">
+            <div>
+              <h2 class="font-display font-semibold text-lg text-zinc-100">
+                Solo Progression Standards
+              </h2>
+              <p class="text-xs text-zinc-400 mt-0.5">Evaluated automatically from synced Liftosaur history</p>
+            </div>
+            <span class="text-[11px] font-mono text-zinc-500">Rolling Window</span>
+          </div>
+          <div id="solo-quests-list" class="space-y-2.5"></div>
+        </div>
+
+        <!-- Next Tier Benchmarks (Allosaurus III) -->
+        <div class="panel rounded-2xl p-6 sm:p-8 space-y-4 reveal-on-scroll stagger-2">
+          <div class="border-b border-white/[0.06] pb-3">
+            <h3 class="font-display font-semibold text-base text-zinc-100">
+              Allosaurus III (Tier VII) Thresholds
+            </h3>
+            <p class="text-xs text-zinc-400 mt-0.5">Required compound e1RMs at <span id="ghost-bw" class="font-mono text-zinc-200">197</span> lb bodyweight</p>
+          </div>
+          <div id="ghost-targets-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SECTION 4: PACK STANDINGS & COLLECTIVE VOLUME
+         ========================================== -->
+    <section id="sec-pack" class="space-y-6">
+      
+      <!-- Pack Standings Card -->
+      <div class="panel rounded-2xl p-6 sm:p-8 reveal-on-scroll">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-white/[0.06]">
+          <div>
+            <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+              Peer Comparison
+            </span>
+            <h2 class="font-display font-semibold text-xl sm:text-2xl text-zinc-100 mt-1">
+              Pack Standings
+            </h2>
+            <p class="text-xs text-zinc-400 mt-0.5">
+              Compare synced Liftosaur telemetry by overall index, bodyweight-normalized DOTS, weekly LP velocity, or 7-day volume.
+            </p>
+          </div>
+
+          <!-- 4 View Modes -->
+          <div class="flex flex-wrap gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-white/[0.06]">
+            <button onclick="setLeaderboardMode('overall')" id="lb-mode-overall" class="lb-mode-btn px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-100 text-zinc-950 transition">
+              Allometric Index
+            </button>
+            <button onclick="setLeaderboardMode('dots')" id="lb-mode-dots" class="lb-mode-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 transition">
+              Relative DOTS
+            </button>
+            <button onclick="setLeaderboardMode('improved')" id="lb-mode-improved" class="lb-mode-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 transition">
+              Weekly Velocity (+LP)
+            </button>
+            <button onclick="setLeaderboardMode('volume')" id="lb-mode-volume" class="lb-mode-btn px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-zinc-100 transition">
+              7d Volume
+            </button>
+          </div>
+        </div>
+
+        <div id="pack-leaderboard-rows" class="space-y-2.5 mt-6"></div>
+
+        <!-- Connect Peer via Liftosaur API Key -->
+        <div class="mt-8 pt-6 border-t border-white/[0.06]">
+          <form onsubmit="addPackFriend(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+            <div class="sm:col-span-3">
+              <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-1.5">Peer Callsign</label>
+              <input type="text" id="friend-name" required placeholder="e.g. Alex M." class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500" />
+            </div>
+            <div class="sm:col-span-4">
+              <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-1.5">Peer Liftosaur API Key (<code class="text-zinc-300">lftsk_...</code>)</label>
+              <input type="text" id="friend-apikey" required placeholder="lftsk_..." class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-zinc-500" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-1.5">Category</label>
+              <select id="friend-sex" class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-2 text-xs text-zinc-200 focus:outline-none">
+                <option value="M">Men's</option>
+                <option value="F">Women's</option>
+              </select>
+            </div>
+            <div class="sm:col-span-3">
+              <button type="submit" class="w-full py-2 px-4 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs transition">
+                Sync Peer API Key
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Collective Pack Objective & Head-to-Head Benchmarks -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Left 6 Cols: Weekly Collective Pack Tonnage Objective + Duels -->
+        <div class="lg:col-span-6 space-y-6">
+          <div class="panel rounded-2xl p-6 sm:p-8 space-y-5 reveal-on-scroll">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+                  Collective Pack Objective (Read-Only Tally)
+                </span>
+                <h3 id="raid-boss-name" class="font-display font-semibold text-xl text-zinc-100 mt-1">
+                  GIGANOTOSAURUS ALPHA
+                </h3>
+                <p id="raid-boss-sub" class="text-xs text-zinc-400 mt-0.5">
+                  Automatically aggregates weekly working volume synced from all Pack members' Liftosaur logs.
+                </p>
+              </div>
+              <span class="text-xs font-mono text-zinc-400 shrink-0">150k lb Target</span>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-xs font-mono">
+                <span class="text-zinc-300">Remaining Threshold: <span id="raid-hp-cur" class="text-zinc-100 font-semibold">12,400</span> / <span id="raid-hp-max">150,000</span> lbs</span>
+                <span id="raid-hp-pct" class="text-emerald-400">91.7% Complete</span>
+              </div>
+              <div class="w-full h-2 bg-zinc-900 rounded-full overflow-hidden">
+                <div id="raid-hp-bar" class="h-full rounded-full bg-zinc-200 transition-all duration-700" style="width: 91.7%"></div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-white/[0.06]">
+              <div class="text-[10px] font-mono uppercase text-zinc-500 mb-2.5">Synced Member Contributions</div>
+              <div id="raid-combat-log" class="space-y-2"></div>
+            </div>
+          </div>
+
+          <!-- Head-to-Head Comparisons -->
+          <div class="panel rounded-2xl p-6 sm:p-8 space-y-4 reveal-on-scroll stagger-1">
+            <div class="border-b border-white/[0.06] pb-3">
+              <h3 class="font-display font-semibold text-base text-zinc-100">
+                Head-to-Head Benchmarks
+              </h3>
+              <p class="text-xs text-zinc-400 mt-0.5">Live lift comparisons against Pack peers</p>
+            </div>
+            <div id="duels-list" class="space-y-2.5"></div>
+          </div>
+        </div>
+
+        <!-- Right 6 Cols: Synced Pack Activity Ledger -->
+        <div class="lg:col-span-6 panel rounded-2xl p-6 sm:p-8 space-y-4 reveal-on-scroll stagger-2">
+          <div class="border-b border-white/[0.06] pb-4">
+            <h3 class="font-display font-semibold text-base text-zinc-100">
+              Synced Pack Activity Ledger
+            </h3>
+            <p class="text-xs text-zinc-400 mt-0.5">Chronological feed of workouts and PRs pulled from Liftosaur</p>
+          </div>
+          <div id="social-feed-list" class="space-y-3"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==========================================
+         SECTION 5: API KEY VAULT & TELEMETRY
+         ========================================== -->
+    <section id="sec-api" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-7 panel rounded-2xl p-6 sm:p-8 space-y-6 reveal-on-scroll">
+        <div class="border-b border-white/[0.06] pb-4">
+          <span class="text-[10px] font-mono uppercase tracking-widest text-zinc-400">
+            Authentication & Encryption
+          </span>
+          <h2 class="font-display font-semibold text-lg text-zinc-100 mt-1">
+            Liftosaur API Key Configuration
+          </h2>
+          <p class="text-xs text-zinc-400 mt-0.5">
+            Keys are encrypted at rest with AES-256-GCM and used strictly in read-only mode to fetch <code class="font-mono text-zinc-300">/history</code>, <code class="font-mono text-zinc-300">/measurements</code>, and <code class="font-mono text-zinc-300">/workout/next</code>.
+          </p>
+        </div>
+
+        <form onsubmit="saveAndSyncKey(event)" class="space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-1.5">Callsign</label>
+              <input type="text" id="vault-callsign" value="Jonathan" class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-1.5">Division Scaling</label>
+              <select id="vault-sex" class="w-full bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2 text-xs text-zinc-100 focus:outline-none focus:border-zinc-500">
+                <option value="M">Men's Allometric Curve</option>
+                <option value="F">Women's Allometric Curve</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-mono uppercase text-zinc-400 mb-1.5">Active Token</label>
+              <div id="vault-masked-display" class="w-full bg-zinc-950 border border-white/[0.06] rounded-lg px-3.5 py-2 text-xs font-mono text-emerald-400">
+                lftsk_hRh••••••••OVNg
+              </div>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row gap-3 pt-1">
+            <input type="password" id="vault-apikey" placeholder="Paste replacement lftsk_... key or leave blank to re-sync active key" class="flex-1 bg-zinc-900 border border-white/10 rounded-lg px-3.5 py-2 text-xs font-mono text-zinc-100 focus:outline-none focus:border-zinc-500" />
+            <button type="submit" class="px-5 py-2 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 font-medium text-xs transition shrink-0">
+              Validate & Sync
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Telemetry Status -->
+      <div class="lg:col-span-5 panel rounded-2xl p-6 sm:p-8 flex flex-col justify-between reveal-on-scroll stagger-1">
+        <div>
+          <div class="flex items-center justify-between border-b border-white/[0.06] pb-4">
+            <h3 class="font-display font-semibold text-base text-zinc-100">API Telemetry Status</h3>
+            <span id="telemetry-time" class="text-[11px] font-mono text-zinc-500">Synced</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 pt-4 font-mono text-xs">
+            <div class="panel-subtle rounded-lg p-3">
+              <div class="text-[10px] text-zinc-500">GET /api/v1/history</div>
+              <div class="text-zinc-100 font-semibold mt-1"><span id="tel-workouts">60</span> Sessions</div>
+            </div>
+            <div class="panel-subtle rounded-lg p-3">
+              <div class="text-[10px] text-zinc-500">GET /api/v1/measurements</div>
+              <div class="text-zinc-100 font-semibold mt-1"><span id="tel-bw">197 lb</span></div>
+            </div>
+            <div class="panel-subtle rounded-lg p-3">
+              <div class="text-[10px] text-zinc-500">GET /api/v1/workout/next</div>
+              <div class="text-zinc-100 font-semibold mt-1 truncate" id="tel-next">Week 2 - Day 3</div>
+            </div>
+            <div class="panel-subtle rounded-lg p-3">
+              <div class="text-[10px] text-zinc-500">GET /api/v1/programs</div>
+              <div class="text-zinc-100 font-semibold mt-1"><span id="tel-progs">27</span> Programs</div>
+            </div>
+          </div>
+        </div>
+        <p class="text-[11px] text-zinc-500 mt-4">
+          All sets and progressions are logged exclusively in the Liftosaur app. Liftosauring reads your completed sessions via API.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
